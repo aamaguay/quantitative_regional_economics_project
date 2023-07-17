@@ -5,9 +5,9 @@ This project was developed for the **QRE** seminar. The objective was to develop
 In addition, a *Clustering Analysis* was applied to discover additional patterns using the previous features, and the results were presented in the project. The DBSCAN (Density Based Spatial Clustering Analysis) algorithm was used to perform this analysis, which allowed the discovery of 4 clusters.
 
 ## Model Results
-![clust_plot](code/figure/sdm_model.png)
+![clust_plot](figures/sdm_model.png)
 -------------------------------------
 ## Clustering Analysis
-![clust_plot](code/figure/cl_plot.png)
+![clust_plot](figures/cl_plot.png)
 -------------------------------------
-![clust_3d_plot](code/figure/plot3d2.png)
+![clust_3d_plot](figures/plot3d2.png)
