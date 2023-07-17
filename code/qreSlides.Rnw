@@ -1,0 +1,595 @@
+\documentclass{beamer}
+
+\mode<presentation>
+%\definecolor{mylightblue}{RGB}{65,115,186} % Define light blue
+{
+  \usetheme{Madrid}      % or try Darmstadt, Madrid, Warsaw, ...
+  \usecolortheme{blue} % or try albatross, beaver, crane, ... see here: https://hartwork.org/beamer-theme-matrix/
+  \usefonttheme{default}
+}
+
+%%--------------------------------- 
+% The area between \ documentclass und \ begin{document} is called .
+% load packages and list LaTeX options
+
+
+% Display formulas and symbols
+%%---------------------------------
+\usepackage{amsmath}
+
+% Graphics, subfigures, captions (+ subcaptions)
+%%---------------------------------
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{caption}
+
+\usepackage{pdflscape}
+
+% Tables
+%%---------------------------------
+\usepackage{tabularx}
+\usepackage{booktabs}
+
+\usepackage[justified]{ragged2e}
+% Bibliography
+%%---------------------------------
+\usepackage[backend=biber,
+            sortcites=true,
+            sorting=nyt,
+            citetracker=false,
+            %ibidtracker=false,
+            style=authoryear,
+            doi=true,
+            isbn=false,
+            giveninits=true,
+            uniquename=init,
+            maxnames=3]{biblatex}
+
+% Reduce fontsize of references
+\renewcommand*{\bibfont}{\tiny}
+
+% Load bibliography
+\addbibresource{ref_test.bib}
+
+
+%%---------------------------------
+\title{Influence of IT Employees on GDP}
+%\subtitle{\textit{Subtitle in italics}} % \textbf{} for bold text...
+\author{Alex Amaguaya  \\ \href{mailto:alex.amaguaya@tu-dortmund.de}{alex.amaguaya@tu-dortmund.de} \\ \href{https://github.com/aamaguay}{GitHub} {\includegraphics[height=0.8em]{gt.png}} }
+\institute{Ruhr-Universit{\"a}t Bochum, Germany}
+\date{\today}
+
+
+
+
+% Here starts the actual presentation + slides
+%%---------------------------------
+%%---------------------------------
+
+
+\begin{document}
+
+% First slide
+\begin{frame}[plain]
+\titlepage
+\end{frame}
+
+
+%Second slide
+\begin{frame}{Agenda}
+
+\begin{itemize}
+  \item Motivation
+  \item Data
+  \item Modelling
+  \item Results
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Motivation}
+\justifying
+Based on the particular functional form of the production function, Cobb-Douglas production function, we usually study the relationship between production and two components, \textit{labor and physical capital}. But, there is a third factor and that is technology, sometimes it is difficult to measure because the data is not available or there is no specific definition on how to measure this component.
+\par\medskip
+
+Some research papers discuss the positive effects between the third component and economic growth. Furthermore, some of these studies attempted to estimate the relationship between various economics variables and the technology diffusion,\textit{The Gompertz model of technology diffusion}. (Baliamoune-Lutz, 2003) (Avgerou, 1998)
+\par\medskip
+
+In this project, technology investment was not disaggregated at the city level and for several years, so a proxy variable was used to analyze the third component (\% of IT employees). In addition, some control variables were considered to mitigate potential problems of omitted variables bias.
+
+\end{frame}
+
+\begin{frame}{Data}
+\justifying
+Inkar database was used for this project and then a data set was constructed using data from 2016 to 2020. It includes the following variables:
+
+
+\begin{itemize}
+\justifying
+
+  \item ln\_gdp : Logarithm of Gross Domestic Product (GDP) absolute in million euros.
+  \item ln\_physical\_investment : Logarithm of expenditure on physical investments in € per inhabitant.
+  \item perctg\_it\_employees : Share of employees subject to social security contributions in IT and scientific service occupations to SV employees in \%.
+  \item employment\_rate : SV employees at place of residence per 100 inhabitants of working age in \%
+  \item perctg\_inhab\_working\_age : Percentage of residents aged 18 to under 50
+  \item settlement\_density : Inhabitants per km² settlement and transport area in 1K
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Modelling - Tests}
+<<testlag, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=10, fig.height=8>>=
+set.seed(15)
+library(readxl)
+library(corrplot)
+library(dbplyr)
+library(dplyr)
+library(splm)
+library(spdep)
+library(readxl)
+library(modelsummary)
+library(stargazer)
+library(xtable)
+library(schoRsch)
+require("rgdal")
+krs_shp_mtrx <- readOGR("C:/Users/User/Desktop/quantitative_regional_economics_project/other/vg2500_krs", "vg2500_krs")
+krs_mtrx <- poly2nb(krs_shp_mtrx, queen = TRUE)
+krs_w <- nb2listw(krs_mtrx, style="W")
+
+ds.full <- read_excel('C:/Users/User/Desktop/quantitative_regional_economics_project/code/data_process_final/dsfinallongimpwgeodataincldLags.xlsx')
+f_ols <- gross_domest_prod_millon_ln ~ 
+  employees_IT_scient_serv_occup_perc + Expenditure_physical_invest_per_inhab_ln + employment_rate +
+  residents_18_to_50yrs_perc + settlement_density_km2_miles
+filter.ds <- ds.full %>% as.data.frame() %>% 
+  dplyr::filter(year == 2020) 
+
+model.year <- lm(f_ols, data = filter.ds)
+rest.error.dep.lag.tst <- lm.LMtests(model.year, listw=krs_w, test=c( "RLMerr", "RLMlag" ) )
+
+# t_out(toutput=sum.test, n.equal = TRUE, welch.df.exact = TRUE, welch.n = NA,
+#     d.corr = TRUE, print = TRUE)
+# latex(sum.test , 'a')
+
+@
+
+\begin{table}
+\centering
+\begin{tabular}{lrr}
+\toprule
+Name & Test Statistic & p-value \\
+\midrule
+RLMerr & 0.43639 & 0.5089\\
+RLMlag & 6.8278 & 0.00898\\
+\bottomrule
+\end{tabular}
+\caption{Test results - Data 2020}
+\end{table}
+
+\end{frame}
+
+
+
+\begin{frame}{Modelling}
+\justifying
+\begin{block}{Spatial Durbin Model}
+
+$ln\_gdp_{it} = \alpha_{n} + \rho \text{W} ln\_gdp_{it} + \beta_{1} ln\_physical\_investment_{it} + \beta_{2} perctg\_it\_employees_{it} + \beta_{3} employment\_rate_{it} + \beta_{4} perctg\_inhab\_working\_age_{it} + \beta_{5} settlement\_density_{it} + \varepsilon_{\text{it}} $ 
+
+\par\medskip
+
+where \textit{i} refers to the cities, and \textit{t} is the time period (2016-2020)
+
+\end{block}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Results - Correlation}
+\begin{figure}
+\begin{subfigure}[b]{1\textheight}
+
+<<plot, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=10, fig.height=8>>=
+
+col.name.model <- c("employees_IT_scient_serv_occup_perc", "gross_domest_prod_millon_ln", 
+                    "Expenditure_physical_invest_per_inhab_ln", "employment_rate", 
+                    "residents_18_to_50yrs_perc", "settlement_density_km2_miles")
+col.matrix.corr <- c("Rate of IT employees", "log of GDP", 
+                     "ln of Physical investment", "Employment rate",
+                     "% of residents from 18 to 50 years", "Settlement density by km2 (1k)")
+
+corr.plot <- corrplot(cor(ds.full %>% 
+               filter(year==2020) %>% 
+               select_if(is.numeric) %>% 
+               as.data.frame() %>% 
+               select(-c(ARS, ADE, IBZ, year)) %>% 
+               select(all_of(col.name.model)) %>% 
+               rename(!!!setNames(names(.), col.matrix.corr)), method="spearman"), type="lower", diag = FALSE,
+         mar=c(0,0,0,0), tl.cex= 1, tl.col = "black", tl.offset = 0.7, tl.srt = 30,
+         method = "color", addCoef.col = "black", number.cex=1,
+         outline=FALSE, number.font = 2)
+print(corr.plot)
+@
+\end{subfigure}
+\vspace{-30pt} % adjust the value as needed
+\caption{Correlation Matrix - Data 2020}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}[fragile]{Results - Maps}
+\begin{figure}
+\begin{subfigure}[b]{0.95\textheight}
+
+<<plotmap, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=12, fig.height=10>>=
+
+
+quantile_plot <- function(ds, col.name.var, num.cut, title.name) {
+  quantile_var = quantile(ds[[col.name.var]], probs = seq(0, 1, by = 1/num.cut))
+  name.var <- paste(col.name.var,'quantile', sep = '_')
+  ds[name.var] <- cut(ds[[col.name.var]], breaks = quantile_var,
+                                                     include.lowest = TRUE)
+
+  pl <- (ggplot(ds) +
+    geom_sf(aes(geometry = geometry, fill = !!as.name(name.var) )) +
+      scale_fill_brewer(direction = 1, palette = 1) +
+      labs(title = title.name, fill = "Ranges") +
+      theme(legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        plot.title = element_text(size = 18, face = "bold"),
+        legend.key.size = unit(0.8, "cm"))
+    )
+  return(pl)
+}
+
+library(sf)
+library(ggplot2)
+library(gridExtra)
+shapefile <- st_read("C:/Users/User/Desktop/quantitative_regional_economics_project/other/vg2500_krs/vg2500_krs.shp")
+shapefile$ARS <- as.numeric(shapefile$ARS)
+df.2020 <- ds.full %>% 
+  filter(year == 2020) %>% 
+  select(all_of(c("ARS",'year', col.name.model) ))
+ds.2020.wgeo <- merge(shapefile, df.2020, by.x="ARS", by.y="ARS", all.x=T)
+
+label.var <- c("Rate of IT employees", "ln of GDP", "ln of Physical investment", "Employment rate")
+plot1 <- quantile_plot(ds.2020.wgeo, col.name.model[1], 6, label.var[1])
+plot2 <- quantile_plot(ds.2020.wgeo, col.name.model[2], 6, label.var[2])
+plot3 <- quantile_plot(ds.2020.wgeo, col.name.model[3], 5, label.var[3])
+plot4 <- quantile_plot(ds.2020.wgeo, col.name.model[4], 5, label.var[4])
+all.plots <- grid.arrange(plot1, plot2, plot3 , plot4, ncol = 2, nrow = 2)
+print(all.plots)
+
+@
+\end{subfigure}
+\vspace{-15pt} % adjust the value as needed
+\caption{Heatmap - Data 2020}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}[fragile]{Results - OLS Model}
+<<est11, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=12, fig.height=10>>=
+
+# stargazer(model.year, type = 'latex', column.sep.width = "-15pt", header = FALSE, no.space = TRUE, font.size = "tiny",
+#           out = "C:/Users/User/Desktop/quantitative_regional_economics_project/code/model2020.tex")
+@
+
+\begin{table}[!htbp] \centering 
+  \label{} 
+\tiny 
+\begin{tabular}{@{\extracolsep{-15pt}}lc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{1}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-2} 
+\\[-1.8ex] & ln\_gdp \\ 
+\hline \\[-1.8ex] 
+  Rate of IT employees & 0.099$^{***}$ \\ 
+  & (0.017) \\ 
+  ln of Physical investment & $-$0.119$^{**}$ \\ 
+  & (0.053) \\ 
+  Employment rate & 0.029$^{***}$ \\ 
+  & (0.008) \\ 
+  \% of residents from 18 to 50 years & 0.050$^{***}$ \\ 
+  & (0.012) \\ 
+  Settlement density by km2 (1k) & 0.216$^{***}$ \\ 
+  & (0.045) \\ 
+  Constant & 4.991$^{***}$ \\ 
+  & (0.646) \\ 
+ \hline \\[-1.8ex] 
+Observations & 401 \\ 
+R$^{2}$ & 0.430 \\ 
+Adjusted R$^{2}$ & 0.423 \\ 
+Residual Std. Error & 0.582 (df = 395) \\ 
+F Statistic & 59.637$^{***}$ (df = 5; 395) \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{1}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\caption{OLS Results - Data 2020}
+\end{table} 
+\end{frame}
+
+
+\begin{frame}{Results - Spatial Regression Model}
+<<est1, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=12, fig.height=10>>=
+
+f_spt_w_lags_controls <- gross_domest_prod_millon_ln ~ 
+  employees_IT_scient_serv_occup_perc + Expenditure_physical_invest_per_inhab_ln + employment_rate +
+  employ_IT_lag + exp_phy_inv_lag + employ_rate_lag +
+  residents_18_to_50yrs_perc + settlement_density_km2_miles
+
+fspatlag.wlag.dep.controls <- spml(f_spt_w_lags_controls, data = ds.full,
+                                   index = c("ARS","year"),
+                                   listw = krs_w , model="within", spatial.error="none",
+                                   effect = "twoways", method = "eigen",
+                                   lag=TRUE)
+
+spt_model_lag <- summary(fspatlag.wlag.dep.controls)
+
+strg.results <- stargazer(fspatlag.wlag.dep.controls, type = "latex", column.sep.width = "-15pt", header = FALSE,
+                          no.space = TRUE, font.size = "tiny", 
+                          out = "C:/Users/User/Desktop/quantitative_regional_economics_project/code/t1.tex")
+
+table.result.spt <- as.data.frame(cbind(spt_model_lag$CoefTable[, c(1, 2, 4)]))
+names(table.result.spt) <- c('Est', 'SE', 'Pvalue')
+col.table <- c("lambda", "Rate of IT employees", "ln of Physical investment",
+               "Employment rate", "Rate of IT employees-lag", "ln of Physical investment-lag",
+               "Employment rate-lag", "% of residents from 18 to 50 years", "Settlement density by km2 (1k)")
+
+table.result.spt <- data.frame(
+  term = col.table,
+  estimate = table.result.spt$Est,
+  std.error = table.result.spt$SE,
+  p.value = table.result.spt$Pvalue)
+
+gl_spt <- data.frame(
+  Observations = as.character(length(spt_model_lag$fitted.values)),
+  Model = "Spatial Durbin Model")
+
+mod_grp_spt <- list(tidy = table.result.spt, glance = gl_spt)
+class(mod_grp_spt) <- "modelsummary_list"
+models_total <- list()
+models_total[['Model SDM']] <- mod_grp_spt
+# modelsummary(models_total, stars = T, title = 'ln_gdp', 
+#              fmt = 3, coef_map = c("V",col.table), 
+#              output = 'C:/Users/User/Desktop/quantitative_regional_economics_project/code/t1.tex')
+@
+
+\begin{table}
+\tiny % Adjust the font size here
+\centering
+\begin{tabular}[t]{lcc}
+\toprule
+  & ln\_gdp(1) & ln\_gdp(2) \\
+\midrule
+lambda & 0.247*** &  0.251***\\
+ & (0.030) & (0.030)\\
+Rate of IT employees & 0.010** & 0.010**\\
+ & (0.004) & (0.004)\\
+ln of Physical investment & -0.001 & -0.001\\
+ & (0.001) & (0.001)\\
+Employment rate & 0.005*** & 0.005***\\
+ & (0.001) & (0.001)\\
+Rate of IT employees-lag & -0.040*** & -0.039***\\
+ & (0.009) & (0.008)\\
+ln of Physical investment-lag & 0.001 & 0.0005\\
+ & (0.002) & (0.002)\\
+Employment rate-lag & 0.014*** & 0.015***\\
+ & (0.002) & (0.002)\\
+\% of residents from 18 to 50 years & 0.002 & \\
+ & (0.003) & \\
+Settlement density by km2 (1k) & 0.026+ & \\
+ & (0.015) & \\
+\midrule
+Observations & 2005\\
+Model & Spatial Durbin Model\\
+\bottomrule
+\multicolumn{2}{l}{\rule{0pt}{1em}+ p $<$ 0.1, * p $<$ 0.05, ** p $<$ 0.01, *** p $<$ 0.001}\\
+\end{tabular}
+\caption{SDM results}
+\end{table}
+\end{frame}
+
+
+\begin{frame}{Results - Impact Measures}
+<<est2, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=12, fig.height=10>>=
+## calculate impact measures
+
+f.spat.impacts <- spatialreg::impacts(fspatlag.wlag.dep.controls, listw = krs_w, time = 11)
+f.spat.impacts.sum <- summary(f.spat.impacts, zstats=TRUE, short=TRUE)
+
+table.result.impacts <- data.frame(
+  term = col.table[2:length(col.table)],
+  Direct = round(f.spat.impacts$res$direct,4),
+  Indirect = round(f.spat.impacts$res$indirect, 4),
+  Total = round(f.spat.impacts$res$total,4),
+  Total.p.value = round(as.data.frame(f.spat.impacts.sum$pzmat)$Total , 4) )
+
+library(Hmisc)
+# latex(table.result.impacts, '')
+@
+
+\begin{table}[!tbp]
+\tiny
+\begin{center}
+\begin{tabular}{llrrrr}
+\hline\hline
+\multicolumn{1}{l}{}&\multicolumn{1}{c}{Features}&\multicolumn{1}{c}{Direct}&\multicolumn{1}{c}{Indirect}&\multicolumn{1}{c}{Total}&\multicolumn{1}{c}{p.value(Total)}\tabularnewline
+\hline
+1&Rate of IT employees& 0.0105& 0.0031& 0.0136&0.0044\tabularnewline
+2&ln of Physical investment&-0.0013&-0.0004&-0.0016&0.3329\tabularnewline
+3&Employment rate& 0.0047& 0.0014& 0.0060&0.0015\tabularnewline
+4&Rate of IT employees-lag&-0.0411&-0.0120&-0.0531&0.0000\tabularnewline
+5&ln of Physical investment-lag& 0.0006& 0.0002& 0.0008&0.7006\tabularnewline
+6&Employment rate-lag& 0.0145& 0.0042& 0.0187&0.0000\tabularnewline
+7&\% of residents from 18 to 50 years& 0.0016& 0.0005& 0.0020&0.6707\tabularnewline
+8&Settlement density by km2 (1k)& 0.0266& 0.0078& 0.0344&0.0776\tabularnewline
+\hline
+\end{tabular}\end{center}
+\caption{Impact results}
+\end{table}
+\end{frame}
+
+
+\begin{frame}[fragile]{Results - Clustering Analysis }
+\begin{figure}
+\centering
+<<plotmap3, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=12, fig.height=10>>=
+library(dbscan)
+library(fpc)
+library(factoextra)
+library(caret)
+library(plotly) 
+library(orca)
+library(umap)
+col.name.model <- c("employees_IT_scient_serv_occup_perc", "gross_domest_prod_millon_ln", 
+                    "Expenditure_physical_invest_per_inhab_ln", "employment_rate", 
+                    "residents_18_to_50yrs_perc", "settlement_density_km2_miles")
+
+all.col.cluster <- c( col.name.model )
+ds.2020 <- ds.full %>% as.data.frame() %>% 
+  dplyr::filter(year == 2020) 
+
+ds.filt.2020 <- ds.2020 %>% 
+  dplyr::select(all_of(all.col.cluster)) %>% scale()
+# kNNdistplot(ds.filt.2020, k = 2)
+# abline(h = 1, lty = 2)
+
+res.dbscan <- dbscan( ds.filt.2020 %>% as.data.frame() %>% as.matrix(), eps = 1, MinPts = 4, scale = FALSE)
+table(res.dbscan$cluster)
+
+ds.umap = umap(ds.filt.2020, n_components = 3, random_state = 15, method = c( "naive")) 
+layout <- ds.umap[["layout"]] 
+layout <- data.frame(layout) 
+final <- cbind(layout, res.dbscan$cluster) 
+colnames(final) <- c("X1","X2", "X3", "label")
+cluster_colors <- c('#636EFA', '#EF553B', '#7a49a5', '#f8d458')
+final$cluster_label <- factor(final$label, levels = unique(final$label))
+
+fig2 <- plot_ly(final, x = ~X1, y = ~X2, z = ~X3, color = ~cluster_label, colors = cluster_colors,
+                type = 'scatter3d', mode = 'markers') 
+fig2 <- fig2 %>% 
+  layout(scene = list(
+    legend = list(
+      itemsizing = 'constant',
+      itemwidth = 50,
+      itemclick = FALSE
+    )
+  ))
+
+@
+\includegraphics[width=0.6\textwidth]{plot3d2.png}
+
+\vspace{-15pt} % adjust the value as needed
+\caption{DBSCAN - Data 2020}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}[fragile]{Results - Clustering Analysis}
+\begin{figure}
+\centering
+<<plotmapcluster, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=12, fig.height=10>>=
+
+ds.2020.w.cluster <- ds.2020.wgeo
+ds.2020.w.cluster$cluster <- res.dbscan$cluster
+
+cls.plot <- ggplot(ds.2020.w.cluster) +
+        geom_sf(aes(geometry = geometry, fill = as.factor(cluster) )) +
+      scale_fill_manual(values = c("#F7DC6F", "#52BE80", "#9e0d1b", "#EB984E")) + 
+          labs(title = "", fill = "Clusters") +
+          theme(legend.text = element_text(size = 14),
+            legend.title = element_text(size = 11),
+            plot.title = element_text(size = 18, face = "bold"),
+            legend.key.size = unit(0.8, "cm"))
+
+# print(cls.plot)
+
+
+
+@
+\includegraphics[width=0.6\textwidth]{cl_plot.png}
+\vspace{-10pt} % adjust the value as needed
+\caption{Map with clusters - Data 2020}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}{Results DBSCAN- Clustering Analysis}
+<<clustertable, eval=T, echo=FALSE, warning=F, results='hide', message=F, fig.width=10, fig.height=8>>=
+
+ds.filt.2020.wo.norm <- ds.2020 %>% 
+  dplyr::select(all_of(all.col.cluster)) %>% 
+  mutate(cluster = res.dbscan$cluster)
+
+ds.group.clusters <- round(as.data.frame(t(ds.filt.2020.wo.norm %>% 
+                         group_by(cluster) %>% 
+                         dplyr::summarise_all(median) )),2)
+
+colnames(ds.group.clusters) <- c("cluster_0", "cluster_1", "cluster_2", "cluster_3")
+rownames(ds.group.clusters) <- c("cluster", col.matrix.corr)
+
+# latex(ds.group.clusters, 'clusterResult')
+
+@
+
+\begin{table}[!tbp]
+\tiny % Adjust the font size here
+\begin{center}
+\begin{tabular}{lrrrr}
+\hline\hline
+\multicolumn{1}{l}{clusterResult}&\multicolumn{1}{c}{cluster_0}&\multicolumn{1}{c}{cluster_1}&\multicolumn{1}{c}{cluster_2}&\multicolumn{1}{c}{cluster_3}\tabularnewline
+\hline
+Members&$ 121$&$ 269$&$ 4$&$ 7$\tabularnewline
+Rate of IT employees&$ 4.30$&$ 2.21$&$ 4.70$&$ 1.73$\tabularnewline
+log of GDP&$ 8.94$&$ 8.45$&$ 9.00$&$ 8.99$\tabularnewline
+ln of Physical investment&$ 5.72$&$ 6.04$&$ 5.51$&$ 4.21$\tabularnewline
+Employment rate&$59.97$&$64.09$&$55.84$&$68.87$\tabularnewline
+\% of residents from 18 to 50 years&$39.63$&$36.21$&$43.60$&$31.17$\tabularnewline
+Settlement density by km2 (1k)&$ 2.91$&$ 1.19$&$ 2.86$&$ 1.37$\tabularnewline
+\hline
+\end{tabular}\end{center}
+\caption{Median estimate for each feature}
+\end{table}
+\end{frame}
+
+
+\begin{frame}{Conclusions}
+\begin{itemize}
+\justifying
+
+  \item In the SDM, a positive spatial spillover effects between Rate of IT employees with ln of GDP.
+  \item There was a small negative influence of ln of Physical investment with ln of GDP (-0.001).
+  \item A positive direct of Rate of IT employees within the same area (1\%), but a very small positive indirect effect outside the area (0.3\%) 
+
+\end{itemize}
+% \printbibliography
+\end{frame}
+
+% Bibliography
+%%---------------------------------
+\begin{frame}{References}
+\begin{itemize}
+\justifying
+
+  \item Avgerou, C. (1998). How can IT enable economic growth in developing countries? Information Technology for Development, 8(1), 15–28. doi:10.1080/02681102.1998.9525288
+  \item Kottemann, J. E., & Boyer-Wright, K. M. (2009). Human resource development, domains of information technology use, and levels of economic prosperity. Information Technology for Development, 15(1), 32–42. doi:10.1002/itdj.20114
+  \item Baliamoune-Lutz, M. (2003). An analysis of the determinants and effects of ICT diffusion in developing countries. Information Technology for Development, 10(3), 151–169. doi:10.1002/itdj.1590100303
+  \item Danny Quah, 2002. "Technology Dissemination and Economic Growth: Some Lessons for the New Economy," CEP Discussion Papers dp0522, Centre for Economic Performance, LSE.
+\end{itemize}
+% \printbibliography
+\end{frame}
+
+
+
+
+\end{document}
+
+% for correct compiling
+<<biber, eval=T,echo=F>>=
+system(paste(
+  "biber", knitr:::sans_ext(knit::current_input())
+  ))@

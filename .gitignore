@@ -1,4 +1,11 @@
 /final_dataset
 /other
+/other_docs
 /project_data
 /code/qre_script_20230628_ss23_session2.R
+/code/citation
+/code/data_process_final
+/code/figure
+/code/other_docs
+*.RData
+*.Rhistory
